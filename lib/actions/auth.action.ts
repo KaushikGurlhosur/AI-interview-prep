@@ -1,6 +1,9 @@
 "use server";
 
-import { db } from "@/firebase/admin";
+import { auth, db } from "@/firebase/admin";
+import { cookies } from "next/headers";
+
+const ONE_WEEK = 60 * 60 * 24 * 7;
 
 export async function signUp(params: SignUpParams) {
   const { uid, name, email } = params;
@@ -34,4 +37,21 @@ export async function signUp(params: SignUpParams) {
       message: "Failed to create an account.",
     };
   }
+}
+
+export async function setSessionCookie(idToken: string) {
+  const cookieStore = await cookies();
+
+  // Firebase Admin SDK creates a secure session
+  const sessionCookie = await auth.createSessionCookie(idToken, {
+    expiresIn: ONE_WEEK * 1000, // 7 days in milliseconds
+  });
+
+  // Next.js sets the cookie in the browser
+  cookieStore.set("session", sessionCookie, {
+    maxAge: ONE_WEEK,
+    httpOnly: true, // Prevents client-side JavaScript from accessing the cookie
+    secure: process.env.NODE_ENV === "production", // Use secure cookies in production
+    sameSite: "lax", // Helps prevent CSRF attacks
+  });
 }
